@@ -5,34 +5,22 @@ import torch
 from transformers import (
     AutoTokenizer,
     AutoModelForSeq2SeqLM,
-    BartTokenizer,
-    BartForConditionalGeneration,
 )
 
-BART_MODEL_NAME = "sshleifer/distilbart-cnn-12-6"
-BART_MAX_TOKENS = 1024
+# BART is disabled on this deployment — the free hosting tier's memory
+# limit can't hold BART + T5 loaded together. Restore by uncommenting
+# the BART imports/functions below if deploying somewhere with more RAM.
+# from transformers import BartTokenizer, BartForConditionalGeneration
+# BART_MODEL_NAME = "sshleifer/distilbart-cnn-12-6"
+# BART_MAX_TOKENS = 1024
 
 T5_MODEL_NAME = "t5-small"
 T5_MAX_TOKENS = 512
 
 _device = "cuda" if torch.cuda.is_available() else "cpu"
 
-_bart_tokenizer: Optional[BartTokenizer] = None
-_bart_model: Optional[BartForConditionalGeneration] = None
-
 _t5_tokenizer: Optional[AutoTokenizer] = None
 _t5_model: Optional[AutoModelForSeq2SeqLM] = None
-
-
-def _load_bart():
-    global _bart_tokenizer, _bart_model
-    if _bart_tokenizer is None or _bart_model is None:
-        _bart_tokenizer = BartTokenizer.from_pretrained(BART_MODEL_NAME)
-        _bart_model = BartForConditionalGeneration.from_pretrained(BART_MODEL_NAME).to(
-            _device
-        )
-        _bart_model.eval()
-    return _bart_tokenizer, _bart_model
 
 
 def _load_t5():
@@ -129,9 +117,10 @@ def summarize_bart(
     max_length: int = 142,
     min_length: int = 56,
 ) -> str:
-    tokenizer, model = _load_bart()
-    chunks = _chunk_text(text, tokenizer, BART_MAX_TOKENS)
-    return _summarize_chunks(chunks, tokenizer, model, max_length, min_length)
+    raise NotImplementedError(
+        "BART summarization is disabled on this deployment due to the "
+        "hosting tier's memory limit. Run this locally to use BART."
+    )
 
 
 def summarize_t5(
@@ -146,5 +135,6 @@ def summarize_t5(
     )
 
 
-_load_bart()
-_load_t5()
+# Note: no eager _load_bart()/_load_t5() calls here anymore — T5 now
+# loads lazily on first request instead of at server startup, so boot
+# stays lightweight and memory is only spent once summarization is used.
